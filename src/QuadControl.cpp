@@ -69,13 +69,35 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
   // You'll need the arm length parameter L, and the drag/thrust ratio kappa
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+    //cmd.desiredThrustsN[0] = mass * 9.81f / 4.f;
+    //cmd.desiredThrustsN[1] = mass * 9.81f / 4.f;
+    //cmd.desiredThrustsN[2] = mass * 9.81f / 4.f;
+    //cmd.desiredThrustsN[3] = mass * 9.81f / 4.f;
 
-  cmd.desiredThrustsN[0] = mass * 9.81f / 4.f; // front left
-  cmd.desiredThrustsN[1] = mass * 9.81f / 4.f; // front right
-  cmd.desiredThrustsN[2] = mass * 9.81f / 4.f; // rear left
-  cmd.desiredThrustsN[3] = mass * 9.81f / 4.f; // rear right
+    float l = L / sqrtf(2.f);
+    
+    float c = collThrustCmd;
+    float p_bar = momentCmd.x / l;
+    float q_bar = momentCmd.y / l;
+    float r_bar = -momentCmd.z / kappa;
+    
+    float f1 = (c + p_bar + q_bar + r_bar) / 4.f;
+    float f2 = (c - p_bar + q_bar - r_bar) / 4.f;
+    float f3 = (c + p_bar - q_bar - r_bar) / 4.f;
+    float f4 = (c - p_bar - q_bar + r_bar) / 4.f;
+    
+    //cmd.desiredThrustsN[0] = f1;
+    //cmd.desiredThrustsN[1] = f2;
+    //cmd.desiredThrustsN[2] = f3;
+    //cmd.desiredThrustsN[3] = f4;
+
+    cmd.desiredThrustsN[0] = CONSTRAIN(f1, minMotorThrust, maxMotorThrust); // front left
+    cmd.desiredThrustsN[1] = CONSTRAIN(f2, minMotorThrust, maxMotorThrust);  // front right
+    cmd.desiredThrustsN[2] = CONSTRAIN(f3, minMotorThrust, maxMotorThrust);  // rear left
+    cmd.desiredThrustsN[3] = CONSTRAIN(f4, minMotorThrust, maxMotorThrust);  // rear right
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
+    
 
   return cmd;
 }
@@ -97,8 +119,13 @@ V3F QuadControl::BodyRateControl(V3F pqrCmd, V3F pqr)
   V3F momentCmd;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
-  
+    
+    V3F I;
+    I.x = Ixx;
+    I.y = Iyy;
+    I.z = Izz;
+    
+    momentCmd = I * kpPQR * (pqrCmd - pqr);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -128,12 +155,32 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
   Mat3x3F R = attitude.RotationMatrix_IwrtB();
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
-
+    float r11 = R(0,0);
+    float r12 = R(0,1);
+    float r13 = R(0,2);
+    float r21 = R(1,0);
+    float r22 = R(1,1);
+    float r23 = R(1,2);
+    float r33 = R(2,2);
+    
+    float c = -collThrustCmd / mass;
+    
+    float bx_cmd = CONSTRAIN(accelCmd.x / c, -maxTiltAngle, maxTiltAngle);
+    float bx_err = bx_cmd - r13;
+    float bx_p_term = kpBank * bx_err;
+    
+    float by_cmd = CONSTRAIN(accelCmd.y / c, -maxTiltAngle, maxTiltAngle);
+    float by_err = by_cmd - r23;
+    float by_p_term = kpBank * by_err;
+    
+    pqrCmd.x = (r21 * bx_p_term - r11 * by_p_term) / r33;
+    pqrCmd.y = (r22 * bx_p_term - r12 * by_p_term) / r33;
+    pqrCmd.z = 0.f;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return pqrCmd;
+    
 }
 
 float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, float velZ, Quaternion<float> attitude, float accelZCmd, float dt)
@@ -158,11 +205,32 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
 
   Mat3x3F R = attitude.RotationMatrix_IwrtB();
   float thrust = 0;
-
+    
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+    
+    float z_err = posZCmd - posZ;
+    velZCmd += kpPosZ * z_err;
+    velZCmd = CONSTRAIN(velZCmd, -maxAscentRate, maxDescentRate);
 
-
-
+    integratedAltitudeError += z_err * dt;
+    
+    float z_err_dot = velZCmd - velZ;
+    //accelZCmd += KiPosZ * integratedAltitudeError + kpVelZ * z_err_dot;
+    
+    float p_term = kpPosZ * z_err;
+    //float d_term = kpVelZ * z_err_dot + velZ;
+    float d_term = kpVelZ * z_err_dot;
+    
+    //accelZCmd += KiPosZ * integratedAltitudeError + kpVelZ * z_err_dot;
+    
+    float i_term = KiPosZ * integratedAltitudeError;
+    float b_z = R(2, 2);
+    
+    float u_1_bar = p_term + d_term + i_term + accelZCmd;
+    float c = (u_1_bar - CONST_GRAVITY) / b_z;
+    
+    thrust = -mass * CONSTRAIN(c, -maxAscentRate / dt, maxAscentRate / dt);
+    
   /////////////////////////////// END STUDENT CODE ////////////////////////////
   
   return thrust;
@@ -198,9 +266,23 @@ V3F QuadControl::LateralPositionControl(V3F posCmd, V3F velCmd, V3F pos, V3F vel
   V3F accelCmd = accelCmdFF;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
-  
-
+    
+    V3F posErr  = posCmd - pos;
+    velCmd += kpPosXY * posErr;
+    velCmd.x = CONSTRAIN(velCmd.x, -maxSpeedXY, maxSpeedXY);
+    velCmd.y = CONSTRAIN(velCmd.y, -maxSpeedXY, maxSpeedXY);
+    
+    V3F velErr = velCmd - vel;
+    accelCmd += kpVelXY * velErr;
+    accelCmd.x = CONSTRAIN(accelCmd.x, -maxAccelXY, maxAccelXY);
+    accelCmd.y = CONSTRAIN(accelCmd.y, -maxAccelXY, maxAccelXY);
+    
+    //float x_err = posCmd.x - pos.x;
+    //float x_err_dot = velCmd.x - vel.x;
+    
+    //float p_term_x = kpPosXY * x_err;
+    //float d_term_x = kpVelXY * x_err_dot;
+    //float x_dot_dot_command = p_term_x + d_term_x + x_dot_dot_target
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return accelCmd;
@@ -219,10 +301,18 @@ float QuadControl::YawControl(float yawCmd, float yaw)
   //  - use fmodf(foo,b) to unwrap a radian angle measure float foo to range [0,b]. 
   //  - use the yaw control gain parameter kpYaw
 
-  float yawRateCmd=0;
+    float yawRateCmd=0;
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
-
+    
+    float yawErr = fmodf(yawCmd - yaw, 2. * F_PI);
+    
+    //if (yawErr > F_PI) {
+    //    yawErr -= 2.f * F_PI;
+    //} else if (yawErr < -F_PI) {
+    //    yawErr += 2.f * F_PI;
+    //}
+    yawRateCmd = yawErr * kpYaw;
+    
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return yawRateCmd;
