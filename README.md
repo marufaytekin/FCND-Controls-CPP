@@ -3,7 +3,7 @@
 ## Contents ##
 
  - [Introduction](#introduction)
- - [Implementation Files and Results](#files-and-directories)
+ - [Files and Directories](#files-and-directories)
  - [Tasks](#tasks)
     - [Body rate control in C++](#1.-implemented-body-rate-control-in-c++)
     - [Roll pitch control in C++](#2.-implement-roll-pitch-control-in-c++)
