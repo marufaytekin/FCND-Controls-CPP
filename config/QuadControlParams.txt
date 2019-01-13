@@ -32,7 +32,7 @@ kpBank = 14
 kpYaw = 4
 
 # Angle rate gains: bodyrate control, yaw control
-kpPQR = 50, 50, 10
+kpPQR = 46, 46, 10
 
 # limits
 maxAscentRate = 5
