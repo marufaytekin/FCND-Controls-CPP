@@ -85,11 +85,6 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
     float f2 = (c - p_bar + q_bar - r_bar) / 4.f;
     float f3 = (c + p_bar - q_bar - r_bar) / 4.f;
     float f4 = (c - p_bar - q_bar + r_bar) / 4.f;
-    
-    //cmd.desiredThrustsN[0] = f1;
-    //cmd.desiredThrustsN[1] = f2;
-    //cmd.desiredThrustsN[2] = f3;
-    //cmd.desiredThrustsN[3] = f4;
 
     cmd.desiredThrustsN[0] = CONSTRAIN(f1, minMotorThrust, maxMotorThrust); // front left
     cmd.desiredThrustsN[1] = CONSTRAIN(f2, minMotorThrust, maxMotorThrust);  // front right
@@ -215,17 +210,11 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
     integratedAltitudeError += z_err * dt;
     
     float z_err_dot = velZCmd - velZ;
-    //accelZCmd += KiPosZ * integratedAltitudeError + kpVelZ * z_err_dot;
-    
-    float p_term = kpPosZ * z_err;
-    //float d_term = kpVelZ * z_err_dot + velZ;
-    float d_term = kpVelZ * z_err_dot;
-    
-    //accelZCmd += KiPosZ * integratedAltitudeError + kpVelZ * z_err_dot;
-    
-    float i_term = KiPosZ * integratedAltitudeError;
     float b_z = R(2, 2);
     
+    float p_term = kpPosZ * z_err;
+    float d_term = kpVelZ * z_err_dot;
+    float i_term = KiPosZ * integratedAltitudeError;
     float u_1_bar = p_term + d_term + i_term + accelZCmd;
     float c = (u_1_bar - CONST_GRAVITY) / b_z;
     
@@ -277,12 +266,6 @@ V3F QuadControl::LateralPositionControl(V3F posCmd, V3F velCmd, V3F pos, V3F vel
     accelCmd.x = CONSTRAIN(accelCmd.x, -maxAccelXY, maxAccelXY);
     accelCmd.y = CONSTRAIN(accelCmd.y, -maxAccelXY, maxAccelXY);
     
-    //float x_err = posCmd.x - pos.x;
-    //float x_err_dot = velCmd.x - vel.x;
-    
-    //float p_term_x = kpPosXY * x_err;
-    //float d_term_x = kpVelXY * x_err_dot;
-    //float x_dot_dot_command = p_term_x + d_term_x + x_dot_dot_target
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return accelCmd;
@@ -306,11 +289,6 @@ float QuadControl::YawControl(float yawCmd, float yaw)
     
     float yawErr = fmodf(yawCmd - yaw, 2. * F_PI);
     
-    //if (yawErr > F_PI) {
-    //    yawErr -= 2.f * F_PI;
-    //} else if (yawErr < -F_PI) {
-    //    yawErr += 2.f * F_PI;
-    //}
     yawRateCmd = yawErr * kpYaw;
     
   /////////////////////////////// END STUDENT CODE ////////////////////////////
