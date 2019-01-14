@@ -3,6 +3,7 @@
 ## Contents ##
 
  - [Introduction](#introduction)
+ - [The Goal of this Project](#the-goal-of-this-project)
  - [Files and Directories](#files-and-directories)
  - [Tasks](#tasks)
     - [Body rate control in C++](#1.-implemented-body-rate-control-in-c++)
@@ -23,6 +24,13 @@
 This is the writeup for the C++ control project. Development environment setup and 
 configuration details can be found in 
 [The C++ Project Readme.](https://github.com/udacity/FCND-Controls-CPP) 
+
+
+## The Goal of this Project ##
+
+In the real world the flight controller is usually implemented in C or C++. 
+So in this project we implement a 3D quadrotor controller in C++. The code we
+wrote here can eventually be transferred to a real drone!
 
 ## Files and Directories ##
 
